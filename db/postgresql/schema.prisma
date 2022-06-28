@@ -7,81 +7,278 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model account {
-  user_id    Int       @id @default(autoincrement())
-  username   String    @unique(map: "account.username_unique") @db.VarChar(255)
-  password   String    @db.VarChar(60)
-  is_admin   Boolean   @default(false)
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
-  website    website[]
-}
-
 model event {
-  event_id    Int       @id @default(autoincrement())
-  website_id  Int
-  session_id  Int
-  created_at  DateTime? @default(now()) @db.Timestamptz(6)
-  url         String    @db.VarChar(500)
-  event_type  String    @db.VarChar(50)
-  event_value String    @db.VarChar(50)
-  session     session   @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
-  website     website   @relation(fields: [website_id], references: [website_id], onDelete: Cascade)
-
-  @@index([created_at])
-  @@index([session_id])
-  @@index([website_id])
-}
-
-model pageview {
-  view_id    Int       @id @default(autoincrement())
+  id         Int       @id(map: "event_pk") @unique(map: "event_id_uindex") @default(autoincrement())
   website_id Int
   session_id Int
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
   url        String    @db.VarChar(500)
-  referrer   String?   @db.VarChar(500)
-  session    session   @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
-  website    website   @relation(fields: [website_id], references: [website_id], onDelete: Cascade)
-
-  @@index([created_at])
-  @@index([session_id])
-  @@index([website_id, created_at])
-  @@index([website_id])
-  @@index([website_id, session_id, created_at])
+  event_type String    @db.VarChar(50)
+  is_deleted Boolean   @default(false)
+  created_at DateTime? @db.Timestamptz(6)
 }
 
 model session {
-  session_id   Int        @id @default(autoincrement())
-  session_uuid String     @unique(map: "session.session_uuid_unique") @db.Uuid
+  id           Int       @id(map: "session_pk") @unique(map: "session_id_uindex") @default(autoincrement())
+  session_uuid String    @db.Uuid
   website_id   Int
-  created_at   DateTime?  @default(now()) @db.Timestamptz(6)
-  hostname     String?    @db.VarChar(100)
-  browser      String?    @db.VarChar(20)
-  os           String?    @db.VarChar(20)
-  device       String?    @db.VarChar(20)
-  screen       String?    @db.VarChar(11)
-  language     String?    @db.VarChar(35)
-  country      String?    @db.Char(2)
-  website      website    @relation(fields: [website_id], references: [website_id], onDelete: Cascade)
-  event        event[]
-  pageview     pageview[]
-
-  @@index([created_at])
-  @@index([website_id])
+  browser      String?   @db.VarChar(20)
+  hostname     String?   @db.VarChar(100)
+  os           String?   @db.VarChar(20)
+  device       String?   @db.VarChar(20)
+  screen       String?   @db.VarChar(11)
+  language     String?   @db.VarChar(35)
+  country      String?   @db.Char(2)
+  is_deleted   Boolean   @default(false)
+  created_at   DateTime? @db.Timestamptz(6)
 }
 
-model website {
-  website_id   Int        @id @default(autoincrement())
-  website_uuid String     @unique(map: "website.website_uuid_unique") @db.Uuid
-  user_id      Int
-  name         String     @db.VarChar(100)
-  domain       String?    @db.VarChar(500)
-  share_id     String?    @unique(map: "website.share_id_unique") @db.VarChar(64)
-  created_at   DateTime?  @default(now()) @db.Timestamptz(6)
-  account      account    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  event        event[]
-  pageview     pageview[]
-  session      session[]
+model event_metadata {
+  event_id   Int       @unique(map: "event_metadata_event_id_uindex")
+  metadata   String    @db.VarChar(5000)
+  is_deleted Boolean   @default(false)
+  created_at DateTime? @db.Timestamptz(6)
+}
 
-  @@index([user_id])
+model group {
+  id                             Int            @id(map: "group_pk") @unique(map: "group_id_uindex") @default(autoincrement())
+  name                           String         @unique(map: "group_name_uindex") @db.VarChar(255)
+  description                    String?        @db.VarChar(255)
+  is_deleted                     Boolean        @default(false)
+  created_at                     DateTime?      @db.Timestamptz(6)
+  created_by_id                  Int
+  updated_at                     DateTime?      @db.Timestamptz(6)
+  updated_by_id                  Int?
+  user_group_created_by_idTouser user           @relation("group_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_user_id_fk")
+  user_group_updated_by_idTouser user?          @relation("group_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_user_id_fk_2")
+  group_role                     group_role[]
+  group_source                   group_source[]
+  group_user                     group_user[]
+  user_role                      user_role[]
+}
+
+model group_role {
+  id                                  Int       @id(map: "group_role_pk") @unique(map: "group_role_id_uindex") @default(autoincrement())
+  group_id                            Int
+  role_id                             Int
+  is_deleted                          Boolean   @default(false)
+  created_at                          DateTime? @db.Timestamptz(6)
+  created_by_id                       Int
+  updated_at                          DateTime? @db.Timestamptz(6)
+  updated_by_id                       Int?
+  user_group_role_created_by_idTouser user      @relation("group_role_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_role_user_id_fk")
+  group                               group     @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_role_group_id_fk_3")
+  role                                role      @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_role_role_id_fk")
+  user_group_role_updated_by_idTouser user?     @relation("group_role_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_role_user_id_fk_2")
+}
+
+model group_source {
+  id                                    Int                 @id(map: "group_source_pk") @unique(map: "group_source_id_uindex") @default(autoincrement())
+  group_id                              Int
+  source_id                             Int
+  is_deleted                            Boolean             @default(false)
+  created_at                            DateTime?           @db.Timestamptz(6)
+  created_by_id                         Int
+  updated_at                            DateTime?           @db.Timestamptz(6)
+  updated_by_id                         Int?
+  user_group_source_created_by_idTouser user                @relation("group_source_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_user_id_fk")
+  group                                 group               @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_source_group_id_fk")
+  source                                source              @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_source_source_id_fk")
+  user_group_source_updated_by_idTouser user?               @relation("group_source_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_user_id_fk_2")
+  group_source_role                     group_source_role[]
+}
+
+model group_source_role {
+  id                                         Int          @id(map: "group_source_role_pk") @unique(map: "group_source_role_id_uindex") @default(autoincrement())
+  group_source_id                            Int
+  role_id                                    Int
+  is_deleted                                 Boolean      @default(false)
+  created_at                                 DateTime?    @db.Timestamptz(6)
+  created_by_id                              Int
+  updated_at                                 DateTime?    @db.Timestamptz(6)
+  updated_by_id                              Int?
+  user_group_source_role_created_by_idTouser user         @relation("group_source_role_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_id_fk")
+  group_source                               group_source @relation(fields: [group_source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_source_role_group_source_id_fk")
+  role                                       role         @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_source_role_role_id_fk")
+  user_group_source_role_updated_by_idTouser user?        @relation("group_source_role_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_id_fk_2")
+}
+
+model group_user {
+  id                                  Int       @id(map: "group_user_pk") @unique(map: "group_user_id_uindex") @default(autoincrement())
+  group_id                            Int
+  user_id                             Int
+  is_deleted                          Boolean   @default(false)
+  created_at                          DateTime? @db.Timestamptz(6)
+  created_by_id                       Int
+  updated_at                          DateTime? @db.Timestamptz(6)
+  updated_by_id                       Int?
+  user_group_user_created_by_idTouser user      @relation("group_user_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_user_user_id_fk")
+  group                               group     @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_user_group_id_fk")
+  user_group_user_updated_by_idTouser user?     @relation("group_user_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_user_user_id_fk_2")
+  user_group_user_user_idTouser       user      @relation("group_user_user_idTouser", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "group_user_user_id_fk_3")
+}
+
+model permission {
+  id                                  Int       @id(map: "permission_pk") @unique(map: "permission_id_uindex") @default(autoincrement())
+  name                                String    @unique(map: "permission_name_uindex") @db.VarChar(255)
+  description                         String?   @db.VarChar(255)
+  is_deleted                          Boolean   @default(false)
+  created_at                          DateTime? @db.Timestamptz(6)
+  created_by_id                       Int
+  updated_at                          DateTime? @db.Timestamptz(6)
+  updated_by_id                       Int?
+  user_permission_created_by_idTouser user      @relation("permission_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "permission_user_id_fk")
+  user_permission_updated_by_idTouser user?     @relation("permission_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "permission_user_id_fk_2")
+}
+
+model role {
+  id                            Int                 @id(map: "role_pk") @unique(map: "role_id_uindex") @default(autoincrement())
+  name                          String              @unique(map: "role_name_uindex") @db.VarChar(255)
+  description                   String?             @db.VarChar(255)
+  is_deleted                    Boolean             @default(false)
+  created_at                    DateTime?           @db.Timestamptz(6)
+  created_by_id                 Int
+  updated_at                    DateTime?           @db.Timestamptz(6)
+  updated_by_id                 Int?
+  user_role_created_by_idTouser user                @relation("role_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "role_user_id_fk")
+  user_role_updated_by_idTouser user?               @relation("role_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "role_user_id_fk_2")
+  group_role                    group_role[]
+  group_source_role             group_source_role[]
+}
+
+model source {
+  id                              Int            @id(map: "website_pk") @unique(map: "website_id_uindex") @default(autoincrement())
+  source_uuid                     String         @unique(map: "website_website_uuid_uindex") @db.Uuid
+  share_id                        String?        @db.Uuid
+  name                            String         @db.VarChar(100)
+  domain                          String?        @db.VarChar(500)
+  is_deleted                      Boolean        @default(false)
+  created_at                      DateTime?      @db.Timestamptz(6)
+  created_by_id                   Int
+  updated_at                      DateTime?      @db.Timestamptz(6)
+  updated_by_id                   Int?
+  user_source_created_by_idTouser user           @relation("source_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "source_user_id_fk")
+  user_source_updated_by_idTouser user?          @relation("source_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "source_user_id_fk_2")
+  group_source                    group_source[]
+  team_source                     team_source[]
+  user_source                     user_source[]
+}
+
+model team {
+  id                            Int           @id(map: "team_pk") @unique(map: "team_id_uindex") @default(autoincrement())
+  team_uuid                     String        @unique(map: "team_team_uuid_uindex") @db.Uuid
+  name                          String        @unique(map: "team_name_uindex") @db.VarChar(50)
+  is_deleted                    Boolean       @default(false)
+  created_at                    DateTime?     @db.Timestamptz(6)
+  created_by_id                 Int
+  updated_at                    DateTime?     @db.Timestamptz(6)
+  updated_by_id                 Int?
+  user_team_created_by_idTouser user          @relation("team_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_id_fk")
+  user_team_updated_by_idTouser user?         @relation("team_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_id_fk_2")
+  team_source                   team_source[]
+  team_user                     team_user[]
+}
+
+model team_source {
+  id                                   Int       @id(map: "team_source_pk") @unique(map: "team_source_id_uindex") @default(autoincrement())
+  team_id                              Int
+  source_id                            Int
+  is_deleted                           Boolean   @default(false)
+  created_at                           DateTime? @db.Timestamptz(6)
+  created_by_id                        Int
+  updated_at                           DateTime? @db.Timestamptz(6)
+  updated_by_id                        Int?
+  user_team_source_created_by_idTouser user      @relation("team_source_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_id_fk")
+  source                               source    @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_source_source_id_fk")
+  team                                 team      @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_source_team_id_fk")
+  user_team_source_updated_by_idTouser user?     @relation("team_source_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_id_fk_2")
+}
+
+model team_user {
+  id                                 Int       @id(map: "team_user_pk") @unique(map: "team_user_id_uindex") @default(autoincrement())
+  team_id                            Int
+  user_id                            Int
+  is_deleted                         Boolean   @default(false)
+  created_at                         DateTime? @db.Timestamptz(6)
+  created_by_id                      Int
+  updated_at                         DateTime? @db.Timestamptz(6)
+  updated_by_id                      Int?
+  user_team_user_created_by_idTouser user      @relation("team_user_created_by_idTouser", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_user_id_fk")
+  team                               team      @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_team_id_fk")
+  user_team_user_updated_by_idTouser user?     @relation("team_user_updated_by_idTouser", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_user_id_fk_2")
+  user_team_user_user_idTouser       user      @relation("team_user_user_idTouser", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_user_id_fk_3")
+}
+
+model user {
+  id                                                      Int                 @id @default(autoincrement())
+  account_uuid                                            String              @db.Uuid
+  username                                                String              @unique(map: "user.username_unique") @db.VarChar(255)
+  is_deleted                                              Boolean             @default(false)
+  created_at                                              DateTime?           @db.Timestamptz(6)
+  created_by_id                                           Int
+  updated_at                                              DateTime?           @db.Timestamptz(6)
+  updated_by_id                                           Int?
+  user_userTouser_created_by_id                           user                @relation("userTouser_created_by_id", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_user_id_fk")
+  user_userTouser_updated_by_id                           user?               @relation("userTouser_updated_by_id", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_user_id_fk_2")
+  group_group_created_by_idTouser                         group[]             @relation("group_created_by_idTouser")
+  group_group_updated_by_idTouser                         group[]             @relation("group_updated_by_idTouser")
+  group_role_group_role_created_by_idTouser               group_role[]        @relation("group_role_created_by_idTouser")
+  group_role_group_role_updated_by_idTouser               group_role[]        @relation("group_role_updated_by_idTouser")
+  group_source_group_source_created_by_idTouser           group_source[]      @relation("group_source_created_by_idTouser")
+  group_source_group_source_updated_by_idTouser           group_source[]      @relation("group_source_updated_by_idTouser")
+  group_source_role_group_source_role_created_by_idTouser group_source_role[] @relation("group_source_role_created_by_idTouser")
+  group_source_role_group_source_role_updated_by_idTouser group_source_role[] @relation("group_source_role_updated_by_idTouser")
+  group_user_group_user_created_by_idTouser               group_user[]        @relation("group_user_created_by_idTouser")
+  group_user_group_user_updated_by_idTouser               group_user[]        @relation("group_user_updated_by_idTouser")
+  group_user_group_user_user_idTouser                     group_user[]        @relation("group_user_user_idTouser")
+  permission_permission_created_by_idTouser               permission[]        @relation("permission_created_by_idTouser")
+  permission_permission_updated_by_idTouser               permission[]        @relation("permission_updated_by_idTouser")
+  role_role_created_by_idTouser                           role[]              @relation("role_created_by_idTouser")
+  role_role_updated_by_idTouser                           role[]              @relation("role_updated_by_idTouser")
+  source_source_created_by_idTouser                       source[]            @relation("source_created_by_idTouser")
+  source_source_updated_by_idTouser                       source[]            @relation("source_updated_by_idTouser")
+  team_team_created_by_idTouser                           team[]              @relation("team_created_by_idTouser")
+  team_team_updated_by_idTouser                           team[]              @relation("team_updated_by_idTouser")
+  team_source_team_source_created_by_idTouser             team_source[]       @relation("team_source_created_by_idTouser")
+  team_source_team_source_updated_by_idTouser             team_source[]       @relation("team_source_updated_by_idTouser")
+  team_user_team_user_created_by_idTouser                 team_user[]         @relation("team_user_created_by_idTouser")
+  team_user_team_user_updated_by_idTouser                 team_user[]         @relation("team_user_updated_by_idTouser")
+  team_user_team_user_user_idTouser                       team_user[]         @relation("team_user_user_idTouser")
+  other_user_userTouser_created_by_id                     user[]              @relation("userTouser_created_by_id")
+  other_user_userTouser_updated_by_id                     user[]              @relation("userTouser_updated_by_id")
+  user_role_userTouser_role_created_by_id                 user_role[]         @relation("userTouser_role_created_by_id")
+  user_role_userTouser_role_updated_by_id                 user_role[]         @relation("userTouser_role_updated_by_id")
+  user_role_userTouser_role_user_id                       user_role[]         @relation("userTouser_role_user_id")
+  user_source_userTouser_source_created_by_id             user_source[]       @relation("userTouser_source_created_by_id")
+  user_source_userTouser_source_updated_by_id             user_source[]       @relation("userTouser_source_updated_by_id")
+  user_source_userTouser_source_user_id                   user_source[]       @relation("userTouser_source_user_id")
+}
+
+model user_role {
+  id                                 Int       @id(map: "user_role_pk") @unique(map: "user_role_id_uindex") @default(autoincrement())
+  role_id                            Int
+  user_id                            Int
+  is_deleted                         Boolean   @default(false)
+  created_at                         DateTime? @db.Timestamptz(6)
+  created_by_id                      Int
+  updated_at                         DateTime? @db.Timestamptz(6)
+  updated_by_id                      Int?
+  user_userTouser_role_created_by_id user      @relation("userTouser_role_created_by_id", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_role_user_id_fk")
+  group                              group     @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_role_role_id_fk")
+  user_userTouser_role_updated_by_id user?     @relation("userTouser_role_updated_by_id", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_role_user_id_fk_2")
+  user_userTouser_role_user_id       user      @relation("userTouser_role_user_id", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_role_user_id_fk_3")
+}
+
+model user_source {
+  id                                   Int       @id(map: "user_source_pk") @unique(map: "user_source_id_uindex") @default(autoincrement())
+  user_id                              Int
+  source_id                            Int
+  is_deleted                           Boolean   @default(false)
+  created_at                           DateTime? @db.Timestamptz(6)
+  created_by_id                        Int
+  updated_at                           DateTime? @db.Timestamptz(6)
+  updated_by_id                        Int?
+  user_userTouser_source_created_by_id user      @relation("userTouser_source_created_by_id", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_id_fk")
+  source                               source    @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_source_source_id_fk")
+  user_userTouser_source_updated_by_id user?     @relation("userTouser_source_updated_by_id", fields: [updated_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "team_user_id_fk_2")
+  user_userTouser_source_user_id       user      @relation("userTouser_source_user_id", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_source_user_id_fk")
 }
