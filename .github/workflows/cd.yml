@@ -21,7 +21,7 @@ jobs:
       - uses: mr-smithers-excellent/docker-build-push@v5
         name: Build & push Docker image for ${{ matrix.db-type }}
         with:
-          image: innei/umami
+          image: umami
           tags: ${{ matrix.db-type }}-${{ env.RELEASE_VERSION }}, ${{ matrix.db-type }}-latest
           buildArgs: DATABASE_TYPE=${{ matrix.db-type }}
           registry: ghcr.io
