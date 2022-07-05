@@ -1,5 +1,5 @@
 const { writeFileSync, mkdirSync } = require('fs');
-const { readFile } = require('fs/promises');
+const { readFile } = require('fs-extra');
 const path = require('path');
 
 async function main() {
