@@ -9,6 +9,7 @@ import { removeTrailingSlash } from '../lib/url';
     localStorage,
     document,
     history,
+    umamiEndpoint = 'collect',
   } = window;
 
   const script = document.querySelector('script[data-website-id]');
@@ -16,6 +17,10 @@ import { removeTrailingSlash } from '../lib/url';
   if (!script) return;
 
   const attr = script.getAttribute.bind(script);
+  let endpoint = attr('data-endpoint') || umamiEndpoint;
+  if (endpoint !== 'collect') {
+    endpoint = `tr/` + endpoint;
+  }
   const website = attr('data-website-id');
   const hostUrl = attr('data-host-url');
   const autoTrack = attr('data-auto-track') !== 'false';
@@ -32,9 +37,7 @@ import { removeTrailingSlash } from '../lib/url';
     (dnt && doNotTrack()) ||
     (domain && !domains.includes(hostname));
 
-  const root = hostUrl
-    ? removeTrailingSlash(hostUrl)
-    : script.src.split('/').slice(0, -1).join('/');
+  const root = hostUrl ? removeTrailingSlash(hostUrl) : new URL(script.src).origin;
   const screen = `${width}x${height}`;
   const listeners = {};
   let currentUrl = `${pathname}${search}`;
@@ -77,7 +80,7 @@ import { removeTrailingSlash } from '../lib/url';
     if (trackingDisabled()) return;
 
     post(
-      `${root}/api/collect`,
+      `${root}/api/${endpoint}`,
       {
         type,
         payload,
@@ -122,7 +125,7 @@ import { removeTrailingSlash } from '../lib/url';
       payload,
     });
 
-    fetch(`${root}/api/collect`, {
+    fetch(`${root}/api/${endpoint}`, {
       method: 'POST',
       body: data,
       keepalive: true,

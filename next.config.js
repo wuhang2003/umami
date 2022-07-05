@@ -15,6 +15,15 @@ module.exports = {
     ignoreDuringBuilds: true,
   },
 
+  rewrites() {
+    return {
+      fallback: [
+        { source: '/hash/:tracker(.*?\\.js)', destination: '/hash/umami.js' },
+        { source: '/:tracker(.*?\\.js)', destination: '/umami.js' },
+      ],
+    };
+  },
+
   async headers() {
     return [
       {
